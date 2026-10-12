@@ -1,0 +1,57 @@
+[package]
+name = "netzwerk-speedtest"
+version = "0.1.0"
+description = "Netzwerk-Speedtest: LAN und Internet, Kabel oder WLAN, mit PDF-Bericht"
+authors = ["infralatis"]
+license = "MIT"
+edition = "2024"
+
+[lib]
+name = "speedtest_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+socket2 = { version = "0.6", features = ["all"] }
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "stream"] }
+futures-util = "0.3"
+bytes = "1"
+mdns-sd = "0.21"
+netdev = "0.46"
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.9"
+typst-as-lib = "0.17"
+typst = "0.15"
+typst-pdf = "0.15"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-core-wlan = { version = "0.3", features = ["CWWiFiClient", "CWInterface", "CWChannel", "CWWiFiClient"] }
+objc2-core-location = { version = "0.3", features = ["CLLocationManager", "CLLocationManagerDelegate"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_NetworkManagement_WiFi",
+  "Win32_System_Power",
+  "Win32_Networking_WinSock",
+] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true
