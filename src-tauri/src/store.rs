@@ -16,6 +16,7 @@ pub struct Settings {
     pub plan_up: Option<f64>,
     pub reduce_effects: bool,
     pub show_public_ip: bool,
+    pub show_ssid: bool,
     pub streams: usize,
     pub secs: f64,
 }
@@ -30,6 +31,7 @@ impl Default for Settings {
             plan_up: None,
             reduce_effects: false,
             show_public_ip: false,
+            show_ssid: false,
             streams: 6,
             secs: 10.0,
         }

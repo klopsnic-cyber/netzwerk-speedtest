@@ -140,6 +140,21 @@ async fn export_pdf(app: tauri::AppHandle, ids: Vec<String>, path: String, optio
     Ok(path)
 }
 
+/// Nur Entwicklungs-Builds: SPEEDTEST_AUTOSTART=external bzw. internal:IP:CODE startet sofort einen Test
+/// (zum automatischen Prüfen der Oberfläche). Im Release immer None.
+#[tauri::command]
+fn dev_autostart() -> Option<String> {
+    if cfg!(debug_assertions) { std::env::var("SPEEDTEST_AUTOSTART").ok() } else { None }
+}
+
+/// JavaScript-Fehler der Oberfläche ins Terminal (nur Entwicklungs-Builds).
+#[tauri::command]
+fn frontend_log(msg: String) {
+    if cfg!(debug_assertions) {
+        eprintln!("[oberfläche] {msg}");
+    }
+}
+
 #[tauri::command]
 fn app_version() -> String {
     env!("CARGO_PKG_VERSION").into()
@@ -153,9 +168,15 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
-        .setup(|_| {
+        .setup(|app| {
             // macOS zeigt die WLAN-SSID nur mit Ortungsdienste-Freigabe
             iface::request_location_permission();
+            // Entwicklungs-Autotest: Fenster nach vorn, sonst pausiert macOS die Animationen im verdeckten Fenster
+            if cfg!(debug_assertions) && std::env::var("SPEEDTEST_AUTOSTART").is_ok() {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.set_always_on_top(true);
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -173,6 +194,8 @@ pub fn run() {
             report_file_name,
             export_pdf,
             app_version,
+            dev_autostart,
+            frontend_log,
         ])
         .run(tauri::generate_context!())
         .expect("Netzwerk-Speedtest konnte nicht starten");

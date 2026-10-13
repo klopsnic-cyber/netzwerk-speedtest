@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Der Netzwerk-Speedtest misst die Geschwindigkeit zu einer Gegenstelle in Ihrem lokalen Netzwerk.</string>
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_netzspeed._tcp</string>
+  </array>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>macOS gibt den Namen des WLANs (SSID) nur mit Ortungsfreigabe heraus. Der Standort selbst wird nicht verwendet.</string>
+  <key>NSLocationUsageDescription</key>
+  <string>macOS gibt den Namen des WLANs (SSID) nur mit Ortungsfreigabe heraus. Der Standort selbst wird nicht verwendet.</string>
+</dict>
+</plist>

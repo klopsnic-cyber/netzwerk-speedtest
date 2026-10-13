@@ -175,11 +175,15 @@ pub async fn run(cfg: &TestConfig, bind: Bind, sink: Sink, cancel: Cancel, cpu: 
 
 async fn download(c: reqwest::Client, n: Arc<AtomicU64>, cancel: Cancel, deadline: Instant, status: Arc<AtomicU16>) {
     while Instant::now() < deadline && !cancel.is_cancelled() {
-        // Cloudflare liefert höchstens ca. 25-99 MB je Anfrage (100 MB -> 403)
-        let mut r = match c.get(format!("{BASE}/__down?bytes=25000000")).send().await {
+        // Cloudflare liefert höchstens knapp 100 MB je Anfrage (100 MB -> 403); große Blöcke = wenige Anfragen,
+        // denn Cloudflare begrenzt die Zahl der Anfragen je Anschluss (HTTP 429)
+        let mut r = match c.get(format!("{BASE}/__down?bytes=99000000")).send().await {
             Ok(r) if r.status().is_success() => r,
             Ok(r) => {
                 status.store(r.status().as_u16(), Ordering::Relaxed);
+                if r.status().as_u16() == 429 {
+                    return; // weiteres Nachfragen verlängert nur die Sperre
+                }
                 tokio::time::sleep(Duration::from_millis(500)).await;
                 continue;
             }
@@ -220,6 +224,9 @@ async fn upload(c: reqwest::Client, n: Arc<AtomicU64>, cancel: Cancel, deadline:
         match r {
             Ok(r) if !r.status().is_success() => {
                 status.store(r.status().as_u16(), Ordering::Relaxed);
+                if r.status().as_u16() == 429 {
+                    return;
+                }
                 tokio::time::sleep(Duration::from_millis(500)).await;
             }
             Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,

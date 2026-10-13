@@ -34,6 +34,9 @@ pub fn evaluate(m: &Measurement) -> Verdict {
         if let Some(link) = i.link_mbps {
             let ratio = slower / link as f64;
             out.push(match grade(ratio, 0.9, 0.7, true) {
+                // mehr als die Kabelrate geht nur, wenn die Daten das Kabel nie verlassen
+                _ if ratio > 1.2 => f(Rating::Warn, "Messung lief nicht über das Netzwerk",
+                    "Der Durchsatz liegt über der Kabelrate – die Gegenstelle läuft vermutlich auf diesem Gerät. Gegenstelle auf einem anderen PC starten."),
                 Rating::Good => f(Rating::Good, format!("LAN-Durchsatz {:.0} % der Kabelrate", ratio * 100.0), "Die Kabelverbindung wird voll ausgenutzt."),
                 rt => f(rt, format!("LAN-Durchsatz nur {:.0} % der Kabelrate", ratio * 100.0),
                     "Gegenstelle, Switch und Kabel prüfen; auch eine ausgelastete oder schwache Gegenstelle bremst die Messung."),
