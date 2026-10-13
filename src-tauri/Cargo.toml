@@ -1,6 +1,6 @@
 [package]
 name = "netzwerk-speedtest"
-version = "0.1.0"
+version = "1.0.0"
 description = "Netzwerk-Speedtest: LAN und Internet, Kabel oder WLAN, mit PDF-Bericht"
 authors = ["infralatis"]
 license = "MIT"
