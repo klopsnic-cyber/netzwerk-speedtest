@@ -22,4 +22,4 @@ npm install
 npm run tauri dev
 cd src-tauri && cargo test
 ```
-Release: Version in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` erhöhen, CHANGELOG ergänzen, Tag `vX.Y.Z` pushen – GitHub Actions baut dmg + exe und `latest.json` für den Updater.
+Release: `./release.sh 1.0.1 "Was ist neu"` – setzt die Version, pusht den Tag, GitHub Actions baut dmg + exe und `latest.json`. Laufende Apps melden das Update beim Start bzw. spätestens nach 4 Stunden.

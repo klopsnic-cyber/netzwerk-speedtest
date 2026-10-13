@@ -39,6 +39,7 @@
     settings = await api.settings();
     version = await api.version();
     checkUpdate(true);
+    setInterval(() => !update && checkUpdate(true), 4 * 3600 * 1000); // App bleibt oft tagelang offen
     devAutostart();
   });
 
