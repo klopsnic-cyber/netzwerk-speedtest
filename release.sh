@@ -12,7 +12,7 @@ cd "$(dirname "$0")"
 sed -i '' "s/^  \"version\": \".*\"/  \"version\": \"$V\"/" package.json src-tauri/tauri.conf.json
 sed -i '' "3s/^version = \".*\"/version = \"$V\"/" src-tauri/Cargo.toml
 npm install --package-lock-only --silent
-(cd src-tauri && cargo metadata --format-version 1 --offline >/dev/null)  # Cargo.lock nachziehen
+(cd src-tauri && cargo metadata --format-version 1 >/dev/null)  # Cargo.lock nachziehen
 printf '# Changelog\n\n## %s\n- %s\n%s\n' "$V" "$NOTE" "$(tail -n +2 CHANGELOG.md)" > CHANGELOG.md
 git add -A
 git commit -qm "Version $V"
