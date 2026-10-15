@@ -3205,7 +3205,7 @@ dependencies = [
 
 [[package]]
 name = "netzwerk-speedtest"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "bytes",
  "chrono",

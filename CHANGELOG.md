@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.2
+- Windows: Programm startet jetzt auch auf Rechnern ohne WLAN-Dienst (z. B. Windows Server) – Fehlermeldung „wlanapi.dll nicht gefunden“ behoben
+
 ## 1.0.1
 - Update-Prüfung auch bei dauerhaft geöffneter App (alle 4 Stunden).
 
