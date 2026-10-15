@@ -137,21 +137,59 @@ pub fn wifi_info(name: &str) -> Option<WifiInfo> {
     }
 }
 
+/// WLAN-API (wlanapi.dll) erst zur Laufzeit laden: Auf Windows Server ohne Feature „WLAN-Dienst“
+/// fehlt die DLL – fest verknüpft würde das Programm dann gar nicht starten.
+#[cfg(windows)]
+mod wlanapi {
+    use core::ffi::c_void;
+    use std::sync::OnceLock;
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::NetworkManagement::WiFi::{WLAN_INTERFACE_INFO_LIST, WLAN_INTF_OPCODE};
+    use windows::Win32::System::LibraryLoader::{GetProcAddress, LOAD_LIBRARY_SEARCH_SYSTEM32, LoadLibraryExW};
+    use windows::core::{GUID, s, w};
+
+    pub struct Api {
+        pub open: unsafe extern "system" fn(u32, *const c_void, *mut u32, *mut HANDLE) -> u32,
+        pub enum_interfaces: unsafe extern "system" fn(HANDLE, *const c_void, *mut *mut WLAN_INTERFACE_INFO_LIST) -> u32,
+        pub query: unsafe extern "system" fn(HANDLE, *const GUID, WLAN_INTF_OPCODE, *const c_void, *mut u32, *mut *mut c_void, *mut c_void) -> u32,
+        pub free: unsafe extern "system" fn(*const c_void),
+        pub close: unsafe extern "system" fn(HANDLE, *const c_void) -> u32,
+    }
+
+    /// `None`, wenn wlanapi.dll fehlt – dann gibt es schlicht keine WLAN-Details.
+    pub fn get() -> Option<&'static Api> {
+        static API: OnceLock<Option<Api>> = OnceLock::new();
+        API.get_or_init(|| unsafe {
+            let lib = LoadLibraryExW(w!("wlanapi.dll"), None, LOAD_LIBRARY_SEARCH_SYSTEM32).ok()?;
+            Some(Api {
+                open: std::mem::transmute(GetProcAddress(lib, s!("WlanOpenHandle"))?),
+                enum_interfaces: std::mem::transmute(GetProcAddress(lib, s!("WlanEnumInterfaces"))?),
+                query: std::mem::transmute(GetProcAddress(lib, s!("WlanQueryInterface"))?),
+                free: std::mem::transmute(GetProcAddress(lib, s!("WlanFreeMemory"))?),
+                close: std::mem::transmute(GetProcAddress(lib, s!("WlanCloseHandle"))?),
+            })
+        })
+        .as_ref()
+    }
+}
+
 #[cfg(windows)]
 pub fn wifi_info(name: &str) -> Option<WifiInfo> {
     use windows::Win32::Foundation::HANDLE;
     use windows::Win32::NetworkManagement::WiFi::*;
     use windows::core::GUID;
+    let api = wlanapi::get()?;
     let want = name.trim_matches(|c| c == '{' || c == '}').to_uppercase();
+    let null = std::ptr::null();
     unsafe {
         let mut ver = 0u32;
         let mut h = HANDLE::default();
-        if WlanOpenHandle(2, None, &mut ver, &mut h) != 0 {
+        if (api.open)(2, null, &mut ver, &mut h) != 0 {
             return None;
         }
         let mut list: *mut WLAN_INTERFACE_INFO_LIST = std::ptr::null_mut();
         let mut out = None;
-        if WlanEnumInterfaces(h, None, &mut list) == 0 && !list.is_null() {
+        if (api.enum_interfaces)(h, null, &mut list) == 0 && !list.is_null() {
             let l = &*list;
             let items = std::slice::from_raw_parts(l.InterfaceInfo.as_ptr(), l.dwNumberOfItems as usize);
             for it in items {
@@ -162,18 +200,18 @@ pub fn wifi_info(name: &str) -> Option<WifiInfo> {
                 let mut info = WifiInfo::default();
                 let mut size = 0u32;
                 let mut data: *mut core::ffi::c_void = std::ptr::null_mut();
-                if WlanQueryInterface(h, &g, wlan_intf_opcode_current_connection, None, &mut size, &mut data, None) == 0 && !data.is_null() {
+                if (api.query)(h, &g, wlan_intf_opcode_current_connection, null, &mut size, &mut data, std::ptr::null_mut()) == 0 && !data.is_null() {
                     let a = &(*(data as *const WLAN_CONNECTION_ATTRIBUTES)).wlanAssociationAttributes;
                     let ssid = &a.dot11Ssid;
                     info.ssid = Some(String::from_utf8_lossy(&ssid.ucSSID[..ssid.uSSIDLength.min(32) as usize]).into_owned());
                     info.bssid = Some(a.dot11Bssid.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(":"));
                     info.quality_pct = Some(a.wlanSignalQuality);
                     info.tx_rate_mbps = Some(a.ulTxRate as f64 / 1000.0).filter(|r| *r > 0.0);
-                    WlanFreeMemory(data);
+                    (api.free)(data);
                 }
                 for (op, target) in [(wlan_intf_opcode_rssi, 0u8), (wlan_intf_opcode_channel_number, 1u8)] {
                     let mut data: *mut core::ffi::c_void = std::ptr::null_mut();
-                    if WlanQueryInterface(h, &g, op, None, &mut size, &mut data, None) == 0 && !data.is_null() {
+                    if (api.query)(h, &g, op, null, &mut size, &mut data, std::ptr::null_mut()) == 0 && !data.is_null() {
                         if target == 0 {
                             info.rssi_dbm = Some(*(data as *const i32)).filter(|r| *r < 0);
                         } else {
@@ -181,14 +219,14 @@ pub fn wifi_info(name: &str) -> Option<WifiInfo> {
                             info.channel = Some(c).filter(|c| *c > 0);
                             info.band = info.channel.map(|c| if c <= 14 { "2,4 GHz".into() } else { "5 GHz".into() });
                         }
-                        WlanFreeMemory(data);
+                        (api.free)(data);
                     }
                 }
                 out = Some(info);
             }
-            WlanFreeMemory(list as *const core::ffi::c_void);
+            (api.free)(list as *const core::ffi::c_void);
         }
-        WlanCloseHandle(h, None);
+        (api.close)(h, null);
         out
     }
 }
